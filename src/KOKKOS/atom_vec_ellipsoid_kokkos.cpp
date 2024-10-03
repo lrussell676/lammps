@@ -1758,7 +1758,10 @@ struct AtomVecEllipsoidKokkos_PackExchangeFunctor {
       _angmomw(i,2) = _angmom(j,2);
     }
 
-    const int j_bonus = _copylist_bonus(mysend);
+    int j_bonus = _copylist_bonus(mysend);
+    
+    if (j > -1 && j_bonus < 0)
+      j_bonus = _ellipsoid[i]; // self-copy
     if (j_bonus > -1) {
       if (j < 0) j = i; // self-copy
 
