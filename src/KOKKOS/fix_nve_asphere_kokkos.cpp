@@ -59,7 +59,7 @@ void FixNVEAsphereKokkos<DeviceType>::initial_integrate(int /*vflag*/)
 {
   atomKK->sync(execution_space, X_MASK | V_MASK | F_MASK | ANGMOM_MASK | TORQUE_MASK | RMASS_MASK | ELLIPSOID_MASK | MASK_MASK);
   
-  //auto avec = dynamic_cast<AtomVecEllipsoidKokkos *>(atom->style_match("ellipsoid")); // TODO: check if this is correct, may ask Stan at some point
+  auto avecEllipKK = dynamic_cast<AtomVecEllipsoidKokkos *>(atom->style_match("ellipsoid")); // TODO: check if this is correct, may ask Stan at some point
   bonus = avecEllipKK->k_bonus.view<DeviceType>();
   ellipsoid = atomKK->k_ellipsoid.view<DeviceType>();
 

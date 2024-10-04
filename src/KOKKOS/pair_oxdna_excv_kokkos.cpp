@@ -159,8 +159,8 @@ void PairOxdnaExcvKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
   torque = atomKK->k_torque.view<DeviceType>();
   type = atomKK->k_type.view<DeviceType>();
 
-  auto avec = dynamic_cast<AtomVecEllipsoidKokkos *>(atom->style_match("ellipsoid")); // TODO: check if this is correct, may ask Stan at some point
-  d_bonus = avec->k_bonus.view<DeviceType>();
+  auto avecEllipKK = dynamic_cast<AtomVecEllipsoidKokkos *>(atom->style_match("ellipsoid")); // TODO: check if this is correct, may ask Stan at some point
+  bonus = avecEllipKK->k_bonus.view<DeviceType>();
   ellipsoid = atomKK->k_ellipsoid.view<DeviceType>();
 
   nlocal = atom->nlocal;
@@ -371,7 +371,7 @@ void PairOxdnaExcvKokkos<DeviceType>::operator()(TagPairOxdnaExcvQuatToXYZ, cons
   // TODO: confirm in testing this implementation of quaternion to Cartesian unit vectors in lab frame actually works
   F_FLOAT qn[4];
   for (int i = 0; i < 4; i++) {
-    qn[i] = d_bonus(ellipsoid(n)).quat[i];
+    qn[i] = bonus(ellipsoid(n)).quat[i];
   }
   
   d_nx(n,0) = qn[0]*qn[0] + qn[1]*qn[1] - qn[2]*qn[2] - qn[3]*qn[3];

@@ -106,7 +106,8 @@ class PairOxdnaExcvKokkos : public PairOxdnaExcv, public KokkosBase {
   typename AT::t_f_array torque;
   typename AT::t_int_1d_randomread type;
   
-  DEllipsoidBonusAT::t_bonus_1d d_bonus;
+  //class AtomVecEllipsoidKokkos *avecEllipKK;
+  typename AtomVecEllipsoidKokkosBonusArray<DeviceType>::t_bonus_1d bonus;
   typename AT::t_int_1d_randomread ellipsoid;
 
   DAT::tdual_efloat_1d k_eatom;
