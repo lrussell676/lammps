@@ -48,7 +48,7 @@ template <>
 struct AtomVecEllipsoidKokkosBonusArray<LMPHostType> {
   typedef Kokkos::
     DualView<AtomVecEllipsoid::Bonus*,
-    LMPHostType::array_layout,LMPHostType> tdual_bonus_1d;
+    LMPDeviceType::array_layout,LMPDeviceType> tdual_bonus_1d;
   typedef tdual_bonus_1d::t_host t_bonus_1d;
   typedef tdual_bonus_1d::t_host_const_randomread t_bonus_1d_randomread;
 };
@@ -82,7 +82,6 @@ class AtomVecEllipsoidKokkos : public AtomVecKokkos, public AtomVecEllipsoid {
                      const int nfirst,
                      const int &pbc_flag, const int pbc[]) override;
   int pack_border_kokkos(int n, DAT::tdual_int_1d k_sendlist,
-                         DAT::tdual_int_1d k_sendlist_bonus,
                          DAT::tdual_xfloat_2d buf,
                          int pbc_flag, int *pbc, ExecutionSpace space) override;
   void unpack_border_kokkos(const int &n, const int &nfirst, const int buf_recvflag,
@@ -173,7 +172,7 @@ class AtomVecEllipsoidKokkos : public AtomVecKokkos, public AtomVecEllipsoid {
   HAT::t_int_1d h_ellipsoid;
 
   DAT::tdual_int_1d k_count_bonus;
-  DAT::tdual_int_1d k_nghost_bonus;
+  DAT::tdual_int_scalar k_nghost_bonus;
 
 };
 
