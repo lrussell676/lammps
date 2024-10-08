@@ -880,8 +880,6 @@ void CommKokkos::exchange_device()
       if (bonus_flag) nlocal_bonus = atomKK->avecKK->get_status_nlocal_bonus();
       nsend = 0;
 
-      //printf("COMM: proc %d, nlocal = %d, nlocal_bonus = %d\n",comm->me,nlocal,nlocal_bonus);
-
       // fill buffer with atoms leaving my box, using < and >=
 
       k_count.h_view(0) = k_exchange_sendlist.h_view.extent(0);
@@ -891,11 +889,6 @@ void CommKokkos::exchange_device()
 
         if (bonus_flag) {
           if (ellipsoid_flag) k_bonus_flags = atomKK->k_ellipsoid;
-          
-          //for (int h=0; h<k_bonus_flags.h_view.extent(0); h++) {
-          //  if (k_bonus_flags.h_view(h)) printf("COMM: proc %d, k_bonus_flags[%d] = %d\n",comm->me,h,k_bonus_flags.h_view(h));
-          //}
-          //printf("k_bonus_flags = %d\n",k_bonus_flags.h_view(0));
 
           if (line_flag || tri_flag || body_flag)
             error->all(FLERR,"Bonus struct not yet supported by Kokkos communication");
@@ -931,7 +924,6 @@ void CommKokkos::exchange_device()
           k_count.h_view(0) = k_exchange_sendlist.h_view.extent(0);
           if (bonus_flag) k_count.h_view(1) = k_exchange_sendlist_bonus.h_view.extent(0);
         }
-        //printf("COMM: proc %d, k_count.h_view([0/1]) = %d, %d\n",comm->me,k_count.h_view(0),k_count.h_view(1));
       }
       int count = k_count.h_view(0);
       printf("COMM: count = %d\n",count);
@@ -1193,7 +1185,7 @@ void CommKokkos::borders()
 
 /* ---------------------------------------------------------------------- */
 
-template<class DeviceType, int BONUS_FLAG>
+template<class DeviceType>
 struct BuildBorderListFunctor {
         typedef DeviceType device_type;
         typedef ArrayTypes<DeviceType> AT;
@@ -1202,13 +1194,11 @@ struct BuildBorderListFunctor {
   int iswap,maxsendlist;
   int nfirst,nlast,dim;
   typename AT::t_int_2d sendlist;
-  typename AT::t_int_2d sendlist_bonus;
   typename AT::t_int_scalar nsend;
   typename AT::t_int_1d _bonus_flags;
 
   BuildBorderListFunctor(typename AT::tdual_x_array _x,
                          typename AT::tdual_int_2d _sendlist,
-                         typename AT::tdual_int_2d _sendlist_bonus,
                          typename AT::tdual_int_scalar _nsend,int _nfirst,
                          int _nlast, int _dim,
                          X_FLOAT _lo, X_FLOAT _hi, int _iswap,
@@ -1217,7 +1207,6 @@ struct BuildBorderListFunctor {
     lo(_lo),hi(_hi),x(_x.template view<DeviceType>()),iswap(_iswap),
     maxsendlist(_maxsendlist),nfirst(_nfirst),nlast(_nlast),dim(_dim),
     sendlist(_sendlist.template view<DeviceType>()),
-    sendlist_bonus(_sendlist_bonus.template view<DeviceType>()),
     nsend(_nsend.template view<DeviceType>()),
     _bonus_flags(bonus_flags.template view<DeviceType>()) {}
 
@@ -1239,11 +1228,6 @@ struct BuildBorderListFunctor {
       for (int i=teamstart + dev.team_rank(); i<teamend; i+=dev.team_size()) {
         if (x(i,dim) >= lo && x(i,dim) <= hi) {
           sendlist(iswap,mysend) = i;
-          if (BONUS_FLAG) {
-            if (_bonus_flags(i)>-1) {
-              sendlist_bonus(iswap,mysend) = _bonus_flags(i);
-            }
-          }
           mysend++;
         }
       }
@@ -1342,23 +1326,15 @@ void CommKokkos::borders_device() {
             k_total_send.template modify<LMPHostType>();
             k_total_send.template sync<LMPDeviceType>();
 
-            if (bonus_flag) {
-              BuildBorderListFunctor<DeviceType,1> f(atomKK->k_x,k_sendlist,k_sendlist_bonus,
-                k_total_send,nfirst,nlast,dim,lo,hi,iswap,maxsendlist[iswap],k_bonus_flags);
-              Kokkos::TeamPolicy<DeviceType> config((nlast-nfirst+team_size-1)/team_size,team_size);
-              Kokkos::parallel_for(config,f);
-            } else {
-              BuildBorderListFunctor<DeviceType,0> f(atomKK->k_x,k_sendlist,k_sendlist_bonus,
-                k_total_send,nfirst,nlast,dim,lo,hi,iswap,maxsendlist[iswap],k_bonus_flags);
-              Kokkos::TeamPolicy<DeviceType> config((nlast-nfirst+team_size-1)/team_size,team_size);
-              Kokkos::parallel_for(config,f);
-            }
+            BuildBorderListFunctor<DeviceType> f(atomKK->k_x,k_sendlist,
+              k_total_send,nfirst,nlast,dim,lo,hi,iswap,maxsendlist[iswap],k_bonus_flags);
+            Kokkos::TeamPolicy<DeviceType> config((nlast-nfirst+team_size-1)/team_size,team_size);
+            Kokkos::parallel_for(config,f);
 
             k_total_send.template modify<DeviceType>();
             k_total_send.template sync<LMPHostType>();
 
             k_sendlist.modify<DeviceType>();
-            k_sendlist_bonus.modify<DeviceType>();
 
             if (k_total_send.h_view() >= maxsendlist[iswap]) {
               grow_list(iswap,k_total_send.h_view());
@@ -1367,23 +1343,15 @@ void CommKokkos::borders_device() {
               k_total_send.template modify<LMPHostType>();
               k_total_send.template sync<LMPDeviceType>();
               
-              if (bonus_flag) {
-                BuildBorderListFunctor<DeviceType,1> f(atomKK->k_x,k_sendlist,k_sendlist_bonus,
-                  k_total_send,nfirst,nlast,dim,lo,hi,iswap,maxsendlist[iswap],k_bonus_flags);
-                Kokkos::TeamPolicy<DeviceType> config((nlast-nfirst+team_size-1)/team_size,team_size);
-                Kokkos::parallel_for(config,f);
-              } else {
-                BuildBorderListFunctor<DeviceType,0> f(atomKK->k_x,k_sendlist,k_sendlist_bonus,
-                  k_total_send,nfirst,nlast,dim,lo,hi,iswap,maxsendlist[iswap],k_bonus_flags);
-                Kokkos::TeamPolicy<DeviceType> config((nlast-nfirst+team_size-1)/team_size,team_size);
-                Kokkos::parallel_for(config,f);
-              }
+              BuildBorderListFunctor<DeviceType> f(atomKK->k_x,k_sendlist,
+                k_total_send,nfirst,nlast,dim,lo,hi,iswap,maxsendlist[iswap],k_bonus_flags);
+              Kokkos::TeamPolicy<DeviceType> config((nlast-nfirst+team_size-1)/team_size,team_size);
+              Kokkos::parallel_for(config,f);
 
               k_total_send.template modify<DeviceType>();
               k_total_send.template sync<LMPHostType>();
 
               k_sendlist.modify<DeviceType>();
-              k_sendlist_bonus.modify<DeviceType>();
             }
             nsend = k_total_send.h_view();
           } else {
@@ -1445,9 +1413,8 @@ void CommKokkos::borders_device() {
         DeviceType().fence();
       } else {
         auto k_sendlist_iswap = Kokkos::subview(k_sendlist,iswap,Kokkos::ALL);
-        auto k_sendlist_bonus_iswap = Kokkos::subview(k_sendlist_bonus,iswap,Kokkos::ALL);
         n = atomKK->avecKK->
-          pack_border_kokkos(nsend,k_sendlist_iswap,k_sendlist_bonus_iswap,k_buf_send,
+          pack_border_kokkos(nsend,k_sendlist_iswap,k_buf_send,
                              pbc_flag[iswap],pbc[iswap],exec_space);
         DeviceType().fence();
       }
