@@ -258,7 +258,6 @@ int AtomVecEllipsoidKokkos::pack_comm_kokkos(
 {
   // Check whether to always run forward communication on the host
   // Choose correct forward PackComm kernel
-  printf("AtomVecEllipsoidKokkos::pack_comm_kokkos\n");
   if (lmp->kokkos->forward_comm_on_host) {
     atomKK->sync(Host,X_MASK|RMASS_MASK|ELLIPSOID_MASK|BONUS_MASK);
     if (domain->triclinic) {
@@ -662,7 +661,6 @@ struct AtomVecEllipsoidKokkos_PackCommSelf {
 int AtomVecEllipsoidKokkos::pack_comm_self(
   const int &n, const DAT::tdual_int_1d &list,
   const int nfirst, const int &pbc_flag, const int* const pbc) {
-  printf("PACK_COMM_SELF() call start\n");
   if (lmp->kokkos->forward_comm_on_host) {
     atomKK->sync(Host,X_MASK|RMASS_MASK|ELLIPSOID_MASK|BONUS_MASK);
     atomKK->modified(Host,X_MASK|RMASS_MASK|ELLIPSOID_MASK|BONUS_MASK);
@@ -752,7 +750,6 @@ int AtomVecEllipsoidKokkos::pack_comm_self(
       }
     }
   }
-  //printf("PACK_COMM_SELF() call end\n");
   return n*size_forward;
 }
 
@@ -812,7 +809,6 @@ void AtomVecEllipsoidKokkos::unpack_comm_kokkos(
   const int &n, const int &first,
   const DAT::tdual_xfloat_2d &buf) {
 
-  printf("Proc %d: unpack_comm_kokkos() call start\n", comm->me);
   if (lmp->kokkos->forward_comm_on_host) {
     atomKK->modified(Host,X_MASK|RMASS_MASK|ELLIPSOID_MASK|BONUS_MASK);
     struct AtomVecEllipsoidKokkos_UnpackComm<LMPHostType> f(
@@ -828,7 +824,6 @@ void AtomVecEllipsoidKokkos::unpack_comm_kokkos(
       buf,first,k_bonus,atomKK->k_ellipsoid);
     Kokkos::parallel_for(n,f); 
   }
-  printf("Proc %d: unpack_comm_kokkos() call end\n", comm->me);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -981,10 +976,6 @@ int AtomVecEllipsoidKokkos::pack_border_kokkos(
 {
   X_FLOAT dx,dy,dz;
   
-  printf("Proc %d: pack_border_kokkos() call start\n", comm->me);
-
-  // This was in atom_vec_dpd_kokkos but doesn't appear in any other atom_vec
-  atomKK->sync(space,ALL_MASK);
   if (pbc_flag != 0) {
     if (domain->triclinic == 0) {
       dx = pbc[0]*domain->xprd;
@@ -1113,9 +1104,6 @@ int AtomVecEllipsoidKokkos::pack_border_vel_kokkos(
   X_FLOAT dx=0,dy=0,dz=0;
   X_FLOAT dvx=0,dvy=0,dvz=0;
 
-  // This was in atom_vec_dpd_kokkos but doesn't appear in any other atom_vec
-  atomKK->sync(space,ALL_MASK);
-
   if (pbc_flag != 0) {
     if (domain->triclinic == 0) {
       dx = pbc[0]*domain->xprd;
@@ -1207,7 +1195,7 @@ struct AtomVecEllipsoidKokkos_UnpackBorder {
   typename AtomVecEllipsoidKokkosBonusArray
            <DeviceType>::t_bonus_1d _bonus;
   typename ArrayTypes<DeviceType>::t_int_1d _ellipsoid;
-  int _nlocal_bonus; // do I need this to instead be static?
+  const int _nlocal_bonus; // do I need this to instead be static?
   typename ArrayTypes<DeviceType>::t_int_scalar _nghost_bonus;
 
   AtomVecEllipsoidKokkos_UnpackBorder(
@@ -1221,7 +1209,7 @@ struct AtomVecEllipsoidKokkos_UnpackBorder {
     // Bonus Variables
     const typename DEllipsoidBonusAT::tdual_bonus_1d &bonus,
     const typename DAT::tdual_int_1d &ellipsoid,
-    int &nlocal_bonus, 
+    const int &nlocal_bonus, 
     typename ArrayTypes<DeviceType>::tdual_int_scalar &nghost_bonus):
     _x(x),_tag(tag),_type(type),_mask(mask),
     _rmass(rmass),
@@ -1252,13 +1240,7 @@ struct AtomVecEllipsoidKokkos_UnpackBorder {
     if (ellipID == 0 ) {
       _ellipsoid(i+_first) = -1;
     } else {
-      int j;
-      if (BUF_RECVFLAG) {
-        j = _nlocal_bonus + Kokkos::atomic_fetch_add(&_nghost_bonus(),1);
-      } else {
-        j = _nlocal_bonus + Kokkos::atomic_fetch_add(&_nghost_bonus(),1);
-      }
-      //printf("nlb, ngb, j = %d, %d, %d\n", _nlocal_bonus, _nghost_bonus(0), j);
+      int j = _nlocal_bonus + Kokkos::atomic_fetch_add(&_nghost_bonus(),1);
       _bonus(j).shape[0] = _buf(i,8);
       _bonus(j).shape[1] = _buf(i,9); 
       _bonus(j).shape[2] = _buf(i,10);
@@ -1278,7 +1260,7 @@ void AtomVecEllipsoidKokkos::unpack_border_kokkos(const int &n, const int &first
                                                const DAT::tdual_xfloat_2d &buf,ExecutionSpace space) {
   while (first+n >= nmax) grow(0);
   while (n+nlocal_bonus+nghost_bonus >= nmax_bonus) grow_bonus();
-  printf("Doing unpack_border_kokkos\n");
+
   if (space==Host) {
     k_nghost_bonus.h_view() = nghost_bonus;
     if (buf_recvflag==0) {
@@ -1479,7 +1461,6 @@ struct AtomVecEllipsoidKokkos_PackExchangeFunctor {
   KOKKOS_INLINE_FUNCTION
   void operator() (const int &mysend) const {
     const int i = _sendlist(mysend);
-    //const int i_bonus = _sendlist_bonus(mysend);
     _buf(mysend,0) = _size_exchange;
     _buf(mysend,1) = _x(i,0);
     _buf(mysend,2) = _x(i,1);
@@ -1569,9 +1550,6 @@ int AtomVecEllipsoidKokkos::pack_exchange_kokkos(
 {
   size_exchange = 23;
 
-  printf("Doing pack_exchange_kokkos\n");
-  error->all(FLERR, "Error: pack_exchange_kokkos not implemented");
-
   if (nsend > (int) (k_buf.view<LMPHostType>().extent(0)*k_buf.view<LMPHostType>().extent(1))/size_exchange) {
     int newsize = nsend*(size_exchange)/k_buf.view<LMPHostType>().extent(1)+1;
     k_buf.resize(newsize,k_buf.view<LMPHostType>().extent(1));
@@ -1632,7 +1610,6 @@ struct AtomVecEllipsoidKokkos_UnpackExchangeFunctor {
   typename AtomVecEllipsoidKokkosBonusArray
           <DeviceType>::t_bonus_1d _bonus;
   typename AT::t_int_1d _ellipsoid;
-  //mutable int _nlocal_bonus;
   typename AT::t_int_1d _nlocal_bonus;
 
   AtomVecEllipsoidKokkos_UnpackExchangeFunctor(

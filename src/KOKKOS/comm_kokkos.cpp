@@ -926,7 +926,6 @@ void CommKokkos::exchange_device()
         }
       }
       int count = k_count.h_view(0);
-      printf("COMM: count = %d\n",count);
 
       // sort exchange_sendlist
 
@@ -960,7 +959,6 @@ void CommKokkos::exchange_device()
       if (bonus_flag) {
 
         int count_bonus = k_count.h_view(1);
-        printf("COMM: count_bonus = %d\n",count_bonus);
 
         // sort exchange_sendlist_bonus
 
@@ -1007,8 +1005,6 @@ void CommKokkos::exchange_device()
       DeviceType().fence();
       atom->nlocal = nlocal;
       if (bonus_flag) atomKK->avecKK->set_status_nlocal_bonus(nlocal_bonus);
-
-      //printf("COMM: AFTER Pex. proc %d, nlocal = %d, nlocal_bonus = %d\n",comm->me,nlocal,nlocal_bonus);
 
       // send/recv atoms in both directions
       // send size of message first so receiver can realloc buf_recv if needed
@@ -1059,9 +1055,6 @@ void CommKokkos::exchange_device()
           atom->nlocal = atomKK->avecKK->
             unpack_exchange_kokkos(k_buf_recv,nrecv,atom->nlocal,dim,lo,hi,
                                      ExecutionSpaceFromDevice<DeviceType>::space,k_indices);
-          
-          int DEBUGnl_bonus = atomKK->avecKK->get_status_nlocal_bonus();
-          //printf("COMM: AFTER Pex. proc %d, nlocal = %d, nlocal_bonus = %d\n",comm->me,atom->nlocal,DEBUGnl_bonus);
 
           DeviceType().fence();
         }
@@ -1453,13 +1446,11 @@ void CommKokkos::borders_device() {
       } else {
         if (sendproc[iswap] != me) {
           buf_recvflag = 1;
-          printf("COMM (Proc %d): I'M *NOT* ME. nrecv %d\n", comm->me, nrecv);
           atomKK->avecKK->unpack_border_kokkos(nrecv,atom->nlocal+atom->nghost,
                                      buf_recvflag,k_buf_recv,exec_space);
           DeviceType().fence();
         } else {
           buf_recvflag = 0;
-          printf("COMM (Proc %d): I'M AM ME. nrecv %d\n", comm->me, nrecv);
           atomKK->avecKK->unpack_border_kokkos(nrecv,atom->nlocal+atom->nghost,
                                      buf_recvflag,k_buf_send,exec_space);
           DeviceType().fence();
@@ -1476,7 +1467,6 @@ void CommKokkos::borders_device() {
       size_reverse_recv[iswap] = nsend*size_reverse;
       firstrecv[iswap] = atom->nlocal + atom->nghost;
       atom->nghost += nrecv;
-      printf("COMM (Proc %d): atom->nghost %d\n", comm->me, atom->nghost);
       iswap++;
     }
   }
