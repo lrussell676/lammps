@@ -84,7 +84,7 @@ class AtomVecEllipsoidKokkos : public AtomVecKokkos, public AtomVecEllipsoid {
   int pack_border_kokkos(int n, DAT::tdual_int_1d k_sendlist,
                          DAT::tdual_xfloat_2d buf,
                          int pbc_flag, int *pbc, ExecutionSpace space) override;
-  void unpack_border_kokkos(const int &n, const int &nfirst, const int buf_recvflag,
+  void unpack_border_kokkos(const int &n, const int &nfirst,
                             const DAT::tdual_xfloat_2d &buf,
                             ExecutionSpace space) override;
   int pack_border_vel_kokkos(int n, DAT::tdual_int_1d k_sendlist,
@@ -102,31 +102,9 @@ class AtomVecEllipsoidKokkos : public AtomVecKokkos, public AtomVecEllipsoid {
   int unpack_exchange_kokkos(DAT::tdual_xfloat_2d &k_buf, int nrecv,
                              int nlocal, int dim, X_FLOAT lo, X_FLOAT hi,
                              ExecutionSpace space, DAT::tdual_int_1d &k_indices) override;    
-  /*int pack_comm_bonus_kokkos(int n, DAT::tdual_int_2d k_sendlist,
-                             DAT::tdual_xfloat_2d buf,int iswap, 
-                             ExecutionSpace space) override;
-  void unpack_comm_bonus_kokkos(const int &n, const int &nfirst,
-                             const DAT::tdual_xfloat_2d &buf,
-                             ExecutionSpace space) override;
-  int pack_border_bonus_kokkos(int &n, DAT::tdual_int_2d &k_sendlist,
-                             DAT::tdual_xfloat_2d &buf,int &iswap,
-                             ExecutionSpace space) override;
-  void unpack_border_bonus_kokkos(const int &n, const int & nfirst,
-                               const DAT::tdual_xfloat_2d & buf,
-                               ExecutionSpace space) override;
-  int pack_exchange_bonus_kokkos(const int &nsend, 
-                               DAT::tdual_xfloat_2d &buf,
-                               DAT::tdual_int_1d k_sendlist,
-                               DAT::tdual_int_1d k_copylist,
-                               ExecutionSpace space) override;
-  int unpack_exchange_bonus_kokkos(DAT::tdual_xfloat_2d &k_buf, 
-                                 int nrecv, int nlocal,
-                                 int dim, X_FLOAT lo, X_FLOAT hi,
-                                 ExecutionSpace space,
-                                 DAT::tdual_int_1d &k_indices) override;*/
 
-  int get_status_nlocal_bonus() override;
-  void set_status_nlocal_bonus(int) override;
+  int get_status_nlocal_bonus() override;     // Using these for use in
+  void set_status_nlocal_bonus(int) override; // CommKokkos::exchange_device()
 
   void sync(ExecutionSpace space, unsigned int mask) override;
   void modified(ExecutionSpace space, unsigned int mask) override;
@@ -139,13 +117,8 @@ class AtomVecEllipsoidKokkos : public AtomVecKokkos, public AtomVecEllipsoid {
   DEllipsoidBonusAT::tdual_bonus_1d k_bonus; 
   DEllipsoidBonusAT::t_bonus_1d d_bonus; 
   HEllipsoidBonusAT::t_bonus_1d h_bonus;
-
-  //typedef Kokkos::DualView<Bonus*,LMPDeviceType> tdual_bonus_1d;
-  //typedef typename tdual_bonus_1d::t_dev t_bonus_1d;
-  //typedef typename tdual_bonus_1d::t_host t_host_bonus_1d;
     
  private:
-  //int *ellipsoid; // IS THIS CORRECT?
   double **torque;  
     
   DAT::t_tagint_1d d_tag;
@@ -156,11 +129,8 @@ class AtomVecEllipsoidKokkos : public AtomVecKokkos, public AtomVecEllipsoid {
   HAT::t_int_1d h_type, h_mask;
     
   DAT::t_x_array d_x;
-  //HAT::t_x_array h_x; // NOT SURE THESE 3 HATs ARE NEEDED - EXIST (PROTECTED MEMBERS) WITHIN AtomVecKokkos
   DAT::t_v_array d_v;
-  //HAT::t_v_array h_v;
   DAT::t_f_array d_f;
-  //HAT::t_f_array h_f;
     
   DAT::t_float_1d d_rmass;
   HAT::t_float_1d h_rmass;
@@ -171,8 +141,8 @@ class AtomVecEllipsoidKokkos : public AtomVecKokkos, public AtomVecEllipsoid {
   DAT::t_int_1d d_ellipsoid;
   HAT::t_int_1d h_ellipsoid;
 
-  DAT::tdual_int_1d k_count_bonus;
   DAT::tdual_int_scalar k_nghost_bonus;
+  DAT::tdual_int_scalar k_count_bonus; // as in, k_nlocal_bonus
 
 };
 

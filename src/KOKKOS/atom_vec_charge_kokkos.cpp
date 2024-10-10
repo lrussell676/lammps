@@ -315,7 +315,6 @@ struct AtomVecChargeKokkos_UnpackBorder {
 /* ---------------------------------------------------------------------- */
 
 void AtomVecChargeKokkos::unpack_border_kokkos(const int &n, const int &first,
-                     const int buf_recvflag,
                      const DAT::tdual_xfloat_2d &buf,ExecutionSpace space) {
   if (first+n >= nmax) {
     grow(first+n+100);
