@@ -150,7 +150,7 @@ void BondOxdnaFENEKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
   
   Kokkos::deep_copy(h_flag,d_flag);
 
-  if (h_flag() == 1) error->warning(FLERR,"FENE bond too long");
+  if (h_flag() == 1) error->warning(FLERR,"FENE bond too long: {}", update->ntimestep);
 
   if (eflag_global) energy += ev.evdwl;
   if (vflag_global) {
