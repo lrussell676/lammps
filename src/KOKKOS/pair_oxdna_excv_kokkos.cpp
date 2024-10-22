@@ -580,9 +580,9 @@ void PairOxdnaExcvKokkos<DeviceType>::operator()(TagPairOxdnaExcvCompute<OXDNAFL
         deltb[0] = rb_cs[1]*delf[2] - rb_cs[2]*delf[1];
         deltb[1] = rb_cs[2]*delf[0] - rb_cs[0]*delf[2];
         deltb[2] = rb_cs[0]*delf[1] - rb_cs[1]*delf[0];
-        a_torque(b,0) -= delta[0];
-        a_torque(b,1) -= delta[1];
-        a_torque(b,2) -= delta[2];
+        a_torque(b,0) -= deltb[0];
+        a_torque(b,1) -= deltb[1];
+        a_torque(b,2) -= deltb[2];
       }
       if (EVFLAG) {
         if (eflag) {
@@ -634,9 +634,9 @@ void PairOxdnaExcvKokkos<DeviceType>::operator()(TagPairOxdnaExcvCompute<OXDNAFL
         deltb[0] = rb_cb[1]*delf[2] - rb_cb[2]*delf[1];
         deltb[1] = rb_cb[2]*delf[0] - rb_cb[0]*delf[2];
         deltb[2] = rb_cb[0]*delf[1] - rb_cb[1]*delf[0];
-        a_torque(b,0) -= delta[0];
-        a_torque(b,1) -= delta[1];
-        a_torque(b,2) -= delta[2];
+        a_torque(b,0) -= deltb[0];
+        a_torque(b,1) -= deltb[1];
+        a_torque(b,2) -= deltb[2];
       }
       if (EVFLAG) {
         if (eflag) {
@@ -742,9 +742,9 @@ void PairOxdnaExcvKokkos<DeviceType>::operator()(TagPairOxdnaExcvCompute<OXDNAFL
         deltb[0] = rb_cb[1]*delf[2] - rb_cb[2]*delf[1];
         deltb[1] = rb_cb[2]*delf[0] - rb_cb[0]*delf[2];
         deltb[2] = rb_cb[0]*delf[1] - rb_cb[1]*delf[0];
-        a_torque(b,0) -= delta[0];
-        a_torque(b,1) -= delta[1];
-        a_torque(b,2) -= delta[2];
+        a_torque(b,0) -= deltb[0];
+        a_torque(b,1) -= deltb[1];
+        a_torque(b,2) -= deltb[2];
       }
       if (EVFLAG) {
         if (eflag) {
