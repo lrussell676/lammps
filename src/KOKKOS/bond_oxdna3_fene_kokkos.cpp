@@ -10,11 +10,8 @@
 
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
-/* ----------------------------------------------------------------------
-   Contributing author: Oliver Henrich (University of Strathclyde, Glasgow)
-------------------------------------------------------------------------- */
 
-#include "bond_oxdna3_fene.h"
+#include "bond_oxdna3_fene_kokkos.h"
 
 #include "atom.h"
 #include "comm.h"
@@ -25,20 +22,48 @@
 using namespace LAMMPS_NS;
 using namespace MathSpecial;
 
+/* ---------------------------------------------------------------------- */
+
+template<class DeviceType>
+BondOxdna3FENEKokkos<DeviceType>::BondOxdna3FENEKokkos(LAMMPS *lmp) : BondOxdnaFENEKokkos<DeviceType>(lmp)
+{
+  this->oxdnaflag = BondOxdnaFENEKokkos<DeviceType>::EnabledOXDNAFlag::OXDNA2; // oxDNA3 uses same as OXDNA2 here
+}
+
 /* ----------------------------------------------------------------------
    set coeffs
    IMPORTANT NOTE ! We entirely code duplicate BondOxdna3Fene::coeff into
    BondOxdna3FENEKokkos::coeff. So any edits made in one needs to manually
    be made to the other ! We did it this way to avoid messy workarounds in
    KOKKOS due to its inheritance structure.
-   The KOKKOS version is in: src/KOKKOS/bond_oxdna3_fene_kokkos.cpp
+   The vanilla version is in: src/CG-DNA/bond_oxdna3_fene.cpp
 ------------------------------------------------------------------------- */
-void BondOxdna3Fene::coeff(int narg, char **arg)
+
+template<class DeviceType>
+void BondOxdna3FENEKokkos<DeviceType>::coeff(int narg, char **arg)
 {
+  // Due to class templating of DeviceType, we need this-> on everything. We use local variables
+  // so that we can as much as possible just copy-paste the vanilla code (it's cleaner this way also).
+  auto *error = this->error;
+  auto *atom = this->atom;
+  auto *comm = this->comm;
+  auto *lmp = this->lmp;
+  auto *setflag = this->setflag;
+  auto *k = this->k;
+  auto &Delta = this->Delta;
+  auto &r0 = this->r0;
+  auto &k_k = this->k_k;
+  auto &k_r0 = this->k_r0;
+  auto &k_Delta = this->k_Delta;
+  MPI_Comm world = this->world;
+
+  // START OF VANILLA CODE DUPLICATION
+  // NOTE: allocate() needs this-> still, but otherwise this is a direct copy and paste from the vanilla code
+
   if (narg != 2)
     error->all(FLERR, "Incorrect args for bond coefficients in oxdna3/fene, use potential file" + utils::errorurl(21));
 
-  if (!allocated) allocate();
+  if (!this->allocated) this->allocate();
 
   int ilo, ihi;
   utils::bounds(FLERR, arg[0], 1, atom->nbondtypes, ilo, ihi, error);
@@ -155,4 +180,37 @@ void BondOxdna3Fene::coeff(int narg, char **arg)
 
   if (count == 0)
     error->all(FLERR, "Incorrect args for bond coefficients in oxdna3/fene" + utils::errorurl(21));
+
+  // END OF VANILLA CODE DUPICATION HERE - now we just need to copy the data into the Kokkos views and sync to device
+
+  int m = atom->nbondtypes;
+  for (int i = 1; i <= m; i++) {
+    k_k.view_host()[i] = k[i];
+    for (int n1 = 0; n1 <= n; n1++) {
+      for (int n2 = 0; n2 <= n; n2++) {
+        for (int n3 = 0; n3 <= n; n3++) {
+          for (int n4 = 0; n4 <= n; n4++) {
+            k_r0.view_host()(i,n1,n2,n3,n4) = r0[i][n1][n2][n3][n4];
+            k_Delta.view_host()(i,n1,n2,n3,n4) = Delta[i][n1][n2][n3][n4];
+          }
+        }
+      }
+    }
+  }
+
+  k_k.template modify<LMPHostType>();
+  k_r0.template modify<LMPHostType>();
+  k_Delta.template modify<LMPHostType>();
+
+  // sync to device
+  k_k.template sync<DeviceType>();
+  k_r0.template sync<DeviceType>();
+  k_Delta.template sync<DeviceType>();
+}
+
+namespace LAMMPS_NS {
+template class BondOxdna3FENEKokkos<LMPDeviceType>;
+#ifdef LMP_KOKKOS_GPU
+template class BondOxdna3FENEKokkos<LMPHostType>;
+#endif
 }
