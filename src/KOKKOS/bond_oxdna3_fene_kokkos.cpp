@@ -48,22 +48,25 @@ void BondOxdna3FENEKokkos<DeviceType>::coeff(int narg, char **arg)
   auto *atom = this->atom;
   auto *comm = this->comm;
   auto *lmp = this->lmp;
-  auto *setflag = this->setflag;
-  auto *k = this->k;
   auto &Delta = this->Delta;
   auto &r0 = this->r0;
-  auto &k_k = this->k_k;
-  auto &k_r0 = this->k_r0;
-  auto &k_Delta = this->k_Delta;
   MPI_Comm world = this->world;
 
   // START OF VANILLA CODE DUPLICATION
-  // NOTE: allocate() needs this-> still, but otherwise this is a direct copy and paste from the vanilla code
+  // NOTE: allocate() needs this-> still, and some of the local variables need to come after allocate().
+  // Apart from that, this is a vanilla copy-paste.
 
   if (narg != 2)
     error->all(FLERR, "Incorrect args for bond coefficients in oxdna3/fene, use potential file" + utils::errorurl(21));
 
   if (!this->allocated) this->allocate();
+
+  // These auto's are not vanilla copy-paste, but they need to come after the allocate() call.
+  auto *setflag = this->setflag;
+  auto *k = this->k;
+  auto &k_k = this->k_k;
+  auto &k_r0 = this->k_r0;
+  auto &k_Delta = this->k_Delta;
 
   int ilo, ihi;
   utils::bounds(FLERR, arg[0], 1, atom->nbondtypes, ilo, ihi, error);
