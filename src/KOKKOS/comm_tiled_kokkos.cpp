@@ -146,10 +146,13 @@ void CommTiledKokkos::forward_comm_device()
 
     if (comm_x_only && !atomKK->k_x.NEED_TRANSFORM) {
       if (recvother[iswap]) {
+
+        // no Kokkos work is launched inside the loop, so fence only once
+
+        DeviceType().fence();
         for (i = 0; i < nrecv; i++) {
           buf = (double*)atomKK->k_x.view<DeviceType>().data() +
             firstrecv[iswap][i]*atomKK->k_x.view<DeviceType>().extent(1);
-          DeviceType().fence();
           MPI_Irecv(buf,size_forward_recv[iswap][i],
                     MPI_DOUBLE,recvproc[iswap][i],0,world,&requests[i]);
         }
@@ -175,10 +178,13 @@ void CommTiledKokkos::forward_comm_device()
 
     } else if (ghost_velocity) {
       if (recvother[iswap]) {
+
+        // no Kokkos work is launched inside the loop, so fence only once
+
+        DeviceType().fence();
         for (i = 0; i < nrecv; i++) {
           buf = k_buf_recv.view<DeviceType>().data() +
             forward_recv_offset[iswap][i]*k_buf_recv.view<DeviceType>().extent(1);
-          DeviceType().fence();
           MPI_Irecv(buf,
                     size_forward_recv[iswap][i],MPI_DOUBLE,recvproc[iswap][i],0,world,&requests[i]);
         }
@@ -211,10 +217,13 @@ void CommTiledKokkos::forward_comm_device()
 
     } else {
       if (recvother[iswap]) {
+
+        // no Kokkos work is launched inside the loop, so fence only once
+
+        DeviceType().fence();
         for (i = 0; i < nrecv; i++) {
           buf = k_buf_recv.view<DeviceType>().data() +
             forward_recv_offset[iswap][i]*k_buf_recv.view<DeviceType>().extent(1);
-          DeviceType().fence();
           MPI_Irecv(buf,
                     size_forward_recv[iswap][i],MPI_DOUBLE,recvproc[iswap][i],0,world,&requests[i]);
         }
@@ -289,11 +298,17 @@ void CommTiledKokkos::reverse_comm_device()
     nrecv = nrecvproc[iswap] - sendself[iswap];
 
     if (comm_f_only  && !atomKK->k_f.NEED_TRANSFORM) {
+
+      // no Kokkos work is launched inside or between the two loops,
+      // so one fence covers both
+
+      if ((sendother[iswap]) || (recvother[iswap]))
+        DeviceType().fence();
+
       if (sendother[iswap]) {
         for (i = 0; i < nsend; i++) {
           buf = k_buf_recv.view<DeviceType>().data() +
             reverse_recv_offset[iswap][i]*k_buf_recv.view<DeviceType>().extent(1);
-          DeviceType().fence();
           MPI_Irecv(buf,
                     size_reverse_recv[iswap][i],MPI_DOUBLE,sendproc[iswap][i],0,world,&requests[i]);
         }
@@ -302,7 +317,6 @@ void CommTiledKokkos::reverse_comm_device()
         for (i = 0; i < nrecv; i++) {
           buf = (double*)atomKK->k_f.view<DeviceType>().data() +
             firstrecv[iswap][i]*atomKK->k_f.view<DeviceType>().extent(1);
-          DeviceType().fence();
           MPI_Send(buf,size_reverse_send[iswap][i],
                    MPI_DOUBLE,recvproc[iswap][i],0,world);
         }
@@ -325,10 +339,13 @@ void CommTiledKokkos::reverse_comm_device()
 
     } else {
       if (sendother[iswap]) {
+
+        // no Kokkos work is launched inside the loop, so fence only once
+
+        DeviceType().fence();
         for (i = 0; i < nsend; i++) {
           buf = k_buf_recv.view<DeviceType>().data() +
             reverse_recv_offset[iswap][i]*k_buf_recv.view<DeviceType>().extent(1);
-          DeviceType().fence();
           MPI_Irecv(buf,
                     size_reverse_recv[iswap][i],MPI_DOUBLE,sendproc[iswap][i],0,world,&requests[i]);
         }
@@ -482,6 +499,11 @@ void CommTiledKokkos::forward_comm_device(Pair *pair, int size)
     nrecv = nrecvproc[iswap] - sendself[iswap];
 
     if (recvother[iswap]) {
+
+      // fence before posting the receives: the unpack kernels of the previous
+      // swap may still be reading from the same receive buffer
+
+      DeviceType().fence();
       for (i = 0; i < nrecv; i++)
         MPI_Irecv(&buf_recv_pair[nsize*forward_recv_offset[iswap][i]],
                   nsize*recvnum[iswap][i],MPI_DOUBLE,recvproc[iswap][i],0,world,&requests[i]);
@@ -596,6 +618,11 @@ void CommTiledKokkos::reverse_comm_device(Pair *pair, int size)
     nrecv = nrecvproc[iswap] - sendself[iswap];
 
     if (sendother[iswap]) {
+
+      // fence before posting the receives: the unpack kernels of the previous
+      // swap may still be reading from the same receive buffer
+
+      DeviceType().fence();
       for (i = 0; i < nsend; i++)
         MPI_Irecv(&buf_recv_pair[nsize*reverse_recv_offset[iswap][i]],
                   nsize*sendnum[iswap][i],MPI_DOUBLE,sendproc[iswap][i],0,world,&requests[i]);
