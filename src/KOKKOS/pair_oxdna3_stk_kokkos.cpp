@@ -15,7 +15,7 @@
    Contributing author: Oliver Henrich (University of Strathclyde, Glasgow)
 ------------------------------------------------------------------------- */
 
-#include "pair_oxdna3_stk.h"
+#include "pair_oxdna3_stk_kokkos.h"
 
 #include "atom.h"
 #include "comm.h"
@@ -32,52 +32,75 @@ using namespace MathSpecial;
 using namespace MFOxdna;
 
 /* ----------------------------------------------------------------------
-   IMPORTANT NOTE ! We entirely code duplicate the sequence-specific eta_st
-   setup between PairOxdna3Stk and PairOxdna3StkKokkos. So any edits made in
-   one need to manually be made to the other !
-   The KOKKOS version is in: src/KOKKOS/pair_oxdna3_stk_kokkos.h
-   Same goes for coeff routine.
+   IMPORTANT NOTE ! We entirely code duplicate PairOxdna3StkKokkos::coeff
+   into PairOxdna3Stk::coeff. So any edits made in one need to manually be
+   made to the other !
+   The vanilla version is in: src/CG-DNA/pair_oxdna3_stk.cpp
 ------------------------------------------------------------------------- */
 
-PairOxdna3Stk::PairOxdna3Stk(LAMMPS *lmp) : PairOxdnaStk(lmp)
+template<class DeviceType>
+void PairOxdna3StkKokkos<DeviceType>::coeff(int narg, char **arg)
 {
-  // sequence-specific stacking strength
-  // A:0 C:1 G:2 T:3, 3'- [i][j] -5'
+  // Due to class templating of DeviceType, we need this-> on everything. We use local variables
+  // so that we can as much as possible just copy-paste the vanilla code (it's cleaner this way also).
+  auto *error = this->error;
+  auto *atom = this->atom;
+  auto *comm = this->comm;
+  auto *lmp = this->lmp;
+  MPI_Comm world = this->world;
 
-  eta_st[0][0] = 1.1217958408368172;
-  eta_st[1][0] = 1.0712851690057155;
-  eta_st[2][0] = 1.1161603311902566;
-  eta_st[3][0] = 1.0052361315065244;
-
-  eta_st[0][1] = 1.1217958408368172;
-  eta_st[1][1] = 0.7892685731520542;
-  eta_st[2][1] = 1.1022201982984874;
-  eta_st[3][1] = 0.8658975520778347;
-
-  eta_st[0][2] = 1.1217958408368172;
-  eta_st[1][2] = 0.9896542231533637;
-  eta_st[2][2] = 1.1088392608169480;
-  eta_st[3][2] = 1.1217958408368172;
-
-  eta_st[0][3] = 0.9300223683636719;
-  eta_st[1][3] = 0.7694592613578328;
-  eta_st[2][3] = 1.0007533199170144;
-  eta_st[3][3] = 0.8593983791552220;
-
-  single_enable = 0;
-  writedata = 0;
-  trim_flag = 0;
-}
-
-/* ----------------------------------------------------------------------
-   set coeffs
-------------------------------------------------------------------------- */
-void PairOxdna3Stk::coeff(int narg, char **arg)
-{
   int count;
 
   if (narg != 4) error->all(FLERR,"Incorrect args for pair coefficients in oxdna3/stk, use potential file" + utils::errorurl(21));
-  if (!allocated) allocate();
+  if (!this->allocated) this->allocate();
+
+  // NOTE: allocate() needs this-> still, but otherwise this is a direct copy and paste from the
+  // vanilla code. These pointer aliases must be taken AFTER allocate(), since allocate() is what
+  // assigns the underlying member pointers.
+
+  auto *setflag = this->setflag;
+
+  auto *epsilon_st = this->epsilon_st;
+  auto *a_st = this->a_st;
+  auto *cut_st_0 = this->cut_st_0;
+  auto *cut_st_c = this->cut_st_c;
+  auto *cut_st_lo = this->cut_st_lo;
+  auto *cut_st_hi = this->cut_st_hi;
+  auto *cut_st_lc = this->cut_st_lc;
+  auto *cut_st_hc = this->cut_st_hc;
+  auto *b_st_lo = this->b_st_lo;
+  auto *b_st_hi = this->b_st_hi;
+  auto *shift_st = this->shift_st;
+  auto *cutsq_st_hc = this->cutsq_st_hc;
+
+  auto *a_st4 = this->a_st4;
+  auto *theta_st4_0 = this->theta_st4_0;
+  auto *dtheta_st4_ast = this->dtheta_st4_ast;
+  auto *b_st4 = this->b_st4;
+  auto *dtheta_st4_c = this->dtheta_st4_c;
+
+  auto *a_st5 = this->a_st5;
+  auto *theta_st5_0 = this->theta_st5_0;
+  auto *dtheta_st5_ast = this->dtheta_st5_ast;
+  auto *b_st5 = this->b_st5;
+  auto *dtheta_st5_c = this->dtheta_st5_c;
+
+  auto *a_st6 = this->a_st6;
+  auto *theta_st6_0 = this->theta_st6_0;
+  auto *dtheta_st6_ast = this->dtheta_st6_ast;
+  auto *b_st6 = this->b_st6;
+  auto *dtheta_st6_c = this->dtheta_st6_c;
+
+  auto *a_st1 = this->a_st1;
+  auto *cosphi_st1_ast = this->cosphi_st1_ast;
+  auto *b_st1 = this->b_st1;
+  auto *cosphi_st1_c = this->cosphi_st1_c;
+  auto *a_st2 = this->a_st2;
+  auto *cosphi_st2_ast = this->cosphi_st2_ast;
+  auto *b_st2 = this->b_st2;
+  auto *cosphi_st2_c = this->cosphi_st2_c;
+
+  // START OF VANILLA CODE DUPLICATION
 
   int ilo,ihi,jlo,jhi,nlo,nhi;
   utils::bounds(FLERR,arg[0],1,atom->ntypes,ilo,ihi,error);
@@ -137,7 +160,7 @@ void PairOxdna3Stk::coeff(int narg, char **arg)
 
           xi_st_one = values.next_double();
           kappa_st_one = values.next_double();
-          epsilon_st_one = stacking_strength(xi_st_one, kappa_st_one, T);
+          epsilon_st_one = this->stacking_strength(xi_st_one, kappa_st_one, T);
 
           a_st_one = values.next_double();
 
@@ -343,7 +366,7 @@ void PairOxdna3Stk::coeff(int narg, char **arg)
   for (int i = nlo; i <= nhi; i++) {
     for (int j = nlo; j <= nhi; j++) {
 
-      epsilon_st[i][j] = epsilon_st_one * eta_st[i-1][j-1];
+      epsilon_st[i][j] = epsilon_st_one * this->eta_st[i-1][j-1];
 
       a_st[i][j] = a_st_one;
       b_st_lo[i][j] = b_st_lo_one;
@@ -392,7 +415,7 @@ void PairOxdna3Stk::coeff(int narg, char **arg)
           cutsq_st_hc[i][j][k][l] = cut_st_hc[i][j][k][l]*cut_st_hc[i][j][k][l];
 
           tmp = 1 - exp(-(cut_st_c[i][j][k][l]-cut_st_0[i][j][k][l]) * a_st_one);
-          shift_st[i][j][k][l] = epsilon_st_one * eta_st[j-1][k-1] * tmp * tmp;
+          shift_st[i][j][k][l] = epsilon_st_one * this->eta_st[j-1][k-1] * tmp * tmp;
 
           b_st4[i][j][k][l] = a_st4[i][j][k][l]*a_st4[i][j][k][l]*dtheta_st4_ast[i][j][k][l]*
               dtheta_st4_ast[i][j][k][l]/(1-a_st4[i][j][k][l]*dtheta_st4_ast[i][j][k][l]*dtheta_st4_ast[i][j][k][l]);
@@ -407,4 +430,15 @@ void PairOxdna3Stk::coeff(int narg, char **arg)
 
   if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients in oxdna3/stk" + utils::errorurl(21));
 
+  // END OF VANILLA CODE DUPLICATION HERE - now we just need to sync the tetramer arrays to device
+  // (the non-tetramer Kokkos views are synced within ::init_one)
+
+  this->coeff_set_tetramers_kokkos(narg, arg);
+}
+
+namespace LAMMPS_NS {
+template class PairOxdna3StkKokkos<LMPDeviceType>;
+#ifdef LMP_KOKKOS_GPU
+template class PairOxdna3StkKokkos<LMPHostType>;
+#endif
 }
