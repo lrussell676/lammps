@@ -32,20 +32,13 @@ class PairOxdna3ExcvKokkos : public PairOxdnaExcvKokkos<DeviceType> {
  public:
   PairOxdna3ExcvKokkos(class LAMMPS *);
   ~PairOxdna3ExcvKokkos() {}
-   void coeff(int, char **) override;
+  void coeff(int, char **) override;
 };
 
 template<class DeviceType>
 PairOxdna3ExcvKokkos<DeviceType>::PairOxdna3ExcvKokkos(LAMMPS *lmp) : PairOxdnaExcvKokkos<DeviceType>(lmp)
 {
     this->oxdnaflag = PairOxdnaExcvKokkos<DeviceType>::EnabledOXDNAFlag::OXDNA3;
-}
-
-template<class DeviceType>
-void PairOxdna3ExcvKokkos<DeviceType>::coeff(int narg, char **arg)
-{
-   this->coeff_oxdna3_common(narg, arg);
-   this->coeff_set_tetramers_kokkos(narg, arg);
 }
 
 }    // namespace LAMMPS_NS

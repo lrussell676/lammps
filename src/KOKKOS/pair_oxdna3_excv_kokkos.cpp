@@ -15,7 +15,7 @@
    Contributing author: Oliver Henrich (University of Strathclyde, Glasgow)
 ------------------------------------------------------------------------- */
 
-#include "pair_oxdna3_excv.h"
+#include "pair_oxdna3_excv_kokkos.h"
 
 #include "atom.h"
 #include "comm.h"
@@ -31,20 +31,76 @@ using namespace LAMMPS_NS;
 using namespace MathSpecial;
 
 /* ----------------------------------------------------------------------
-   IMPORTANT NOTE ! We entirely code duplicate PairOxdna3Excv::coeff into
-   PairOxdna3ExcvKokkos::coeff. So any edits made in one need to manually
-   be made to the other !
-   The KOKKOS version is in: src/KOKKOS/pair_oxdna3_excv_kokkos.cpp
+   IMPORTANT NOTE ! We entirely code duplicate PairOxdna3ExcvKokkos::coeff
+   into PairOxdna3Excv::coeff. So any edits made in one need to manually be
+   made to the other !
+   The vanilla version is in: src/CG-DNA/pair_oxdna3_excv.cpp
 ------------------------------------------------------------------------- */
 
-void PairOxdna3Excv::coeff(int narg, char **arg)
+template<class DeviceType>
+void PairOxdna3ExcvKokkos<DeviceType>::coeff(int narg, char **arg)
 {
+  // Due to class templating of DeviceType, we need this-> on everything. We use local variables
+  // so that we can as much as possible just copy-paste the vanilla code (it's cleaner this way also).
+  auto *error = this->error;
+  auto *atom = this->atom;
+  auto *comm = this->comm;
+  auto *lmp = this->lmp;
+  MPI_Comm world = this->world;
+
   int count;
 
   if (narg != 3)
     error->all(FLERR,"Incorrect args for pair coefficients in oxdna3/excv, use potential file" + utils::errorurl(21));
 
-  if (!allocated) allocate();
+  if (!this->allocated) this->allocate();
+
+  // NOTE: allocate() needs this-> still, but otherwise this is a direct copy and paste from the
+  // vanilla code. These pointer aliases must be taken AFTER allocate(), since allocate() is what
+  // assigns the underlying member pointers.
+
+  auto *setflag = this->setflag;
+
+  auto *epsilon_bkbk = this->epsilon_bkbk;
+  auto *sigma_bkbk = this->sigma_bkbk;
+  auto *cut_bkbk_ast = this->cut_bkbk_ast;
+  auto *b_bkbk = this->b_bkbk;
+  auto *cut_bkbk_c = this->cut_bkbk_c;
+  auto *lj1_bkbk = this->lj1_bkbk;
+  auto *lj2_bkbk = this->lj2_bkbk;
+  auto *cutsq_bkbk_ast = this->cutsq_bkbk_ast;
+  auto *cutsq_bkbk_c = this->cutsq_bkbk_c;
+
+  auto *epsilon_bkbs = this->epsilon_bkbs;
+  auto *sigma_bkbs = this->sigma_bkbs;
+  auto *cut_bkbs_ast = this->cut_bkbs_ast;
+  auto *b_bkbs = this->b_bkbs;
+  auto *cut_bkbs_c = this->cut_bkbs_c;
+  auto *lj1_bkbs = this->lj1_bkbs;
+  auto *lj2_bkbs = this->lj2_bkbs;
+  auto *cutsq_bkbs_ast = this->cutsq_bkbs_ast;
+  auto *cutsq_bkbs_c = this->cutsq_bkbs_c;
+
+  auto *epsilon_bsbs = this->epsilon_bsbs;
+  auto *sigma_bsbs = this->sigma_bsbs;
+  auto *cut_bsbs_ast = this->cut_bsbs_ast;
+  auto *b_bsbs = this->b_bsbs;
+  auto *cut_bsbs_c = this->cut_bsbs_c;
+  auto *lj1_bsbs = this->lj1_bsbs;
+  auto *lj2_bsbs = this->lj2_bsbs;
+  auto *cutsq_bsbs_ast = this->cutsq_bsbs_ast;
+  auto *cutsq_bsbs_c = this->cutsq_bsbs_c;
+
+  auto *sigma4_bsbs = this->sigma4_bsbs;
+  auto *cut4_bsbs_ast = this->cut4_bsbs_ast;
+  auto *cut4sq_bsbs_ast = this->cut4sq_bsbs_ast;
+  auto *lj14_bsbs = this->lj14_bsbs;
+  auto *lj24_bsbs = this->lj24_bsbs;
+  auto *b4_bsbs = this->b4_bsbs;
+  auto *cut4_bsbs_c = this->cut4_bsbs_c;
+  auto *cut4sq_bsbs_c = this->cut4sq_bsbs_c;
+
+  // START OF VANILLA CODE DUPLICATION
 
   int ilo,ihi,jlo,jhi,nlo,nhi;
   utils::bounds(FLERR,arg[0],1,atom->ntypes,ilo,ihi,error);
@@ -315,4 +371,15 @@ void PairOxdna3Excv::coeff(int narg, char **arg)
 
   if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients in oxdna/excv");
 
+  // END OF VANILLA CODE DUPLICATION HERE - now we just need to sync the tetramer arrays to device
+  // (the non-tetramer Kokkos views are synced within ::init_one)
+
+  this->coeff_set_tetramers_kokkos(narg, arg);
+}
+
+namespace LAMMPS_NS {
+template class PairOxdna3ExcvKokkos<LMPDeviceType>;
+#ifdef LMP_KOKKOS_GPU
+template class PairOxdna3ExcvKokkos<LMPHostType>;
+#endif
 }
