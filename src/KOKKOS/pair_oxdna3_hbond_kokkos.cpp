@@ -15,7 +15,7 @@
    Contributing author: Oliver Henrich (University of Strathclyde, Glasgow)
 ------------------------------------------------------------------------- */
 
-#include "pair_oxdna3_hbond.h"
+#include "pair_oxdna3_hbond_kokkos.h"
 
 #include "atom.h"
 #include "comm.h"
@@ -29,52 +29,83 @@ using namespace LAMMPS_NS;
 using namespace MFOxdna;
 
 /* ----------------------------------------------------------------------
-   IMPORTANT NOTE ! We entirely code duplicate the sequence-specific alpha_hb
-   setup between PairOxdna3Hbond and PairOxdna3HbondKokkos. So any edits made
-   in one need to manually be made to the other !
-   The KOKKOS version is in: src/KOKKOS/pair_oxdna3_hbond_kokkos.cpp
-   Same goes for the coeff routine.
+   IMPORTANT NOTE ! We entirely code duplicate PairOxdna3HbondKokkos::coeff
+   into PairOxdna3Hbond::coeff. So any edits made in one need to manually be
+   made to the other !
+   The vanilla version is in: src/CG-DNA/pair_oxdna3_hbond.cpp
 ------------------------------------------------------------------------- */
 
-PairOxdna3Hbond::PairOxdna3Hbond(LAMMPS *lmp) : PairOxdnaHbond(lmp)
+template<class DeviceType>
+void PairOxdna3HbondKokkos<DeviceType>::coeff(int narg, char **arg)
 {
-  single_enable = 0;
-  writedata = 0;
-  trim_flag = 0;
+  // Due to class templating of DeviceType, we need this-> on everything. We use local variables
+  // so that we can as much as possible just copy-paste the vanilla code (it's cleaner this way also).
+  auto *error = this->error;
+  auto *atom = this->atom;
+  auto *comm = this->comm;
+  auto *lmp = this->lmp;
+  MPI_Comm world = this->world;
 
-  // sequence-specific base-pairing strength
-  // A:0 C:1 G:2 T:3, 5'- [i][j] -3'
-
-  alpha_hb[0][0] = 1.00000;
-  alpha_hb[0][1] = 1.00000;
-  alpha_hb[0][2] = 1.00000;
-  alpha_hb[0][3] = 0.6493620379646540;
-
-  alpha_hb[1][0] = 1.00000;
-  alpha_hb[1][1] = 1.00000;
-  alpha_hb[1][2] = 1.1999420813642658;
-  alpha_hb[1][3] = 1.00000;
-
-  alpha_hb[2][0] = 1.00000;
-  alpha_hb[2][1] = 1.1999420813642658;
-  alpha_hb[2][2] = 1.00000;
-  alpha_hb[2][3] = 1.00000;
-
-  alpha_hb[3][0] = 0.6493620379646540;
-  alpha_hb[3][1] = 1.00000;
-  alpha_hb[3][2] = 1.00000;
-  alpha_hb[3][3] = 1.00000;
-}
-
-/* ----------------------------------------------------------------------
-   set coeffs
-------------------------------------------------------------------------- */
-void PairOxdna3Hbond::coeff(int narg, char **arg)
-{
   int count;
 
   if (narg != 3) error->all(FLERR,"Incorrect args for pair coefficients in oxdna3/hbond, use potential file" + utils::errorurl(21));
-  if (!allocated) allocate();
+  if (!this->allocated) this->allocate();
+
+  // NOTE: allocate() needs this-> still, but otherwise this is a direct copy and paste from the
+  // vanilla code. These pointer aliases must be taken AFTER allocate(), since allocate() is what
+  // assigns the underlying member pointers.
+
+  auto *setflag = this->setflag;
+
+  auto *epsilon_hb = this->epsilon_hb;
+  auto *a_hb = this->a_hb;
+  auto *cut_hb_0 = this->cut_hb_0;
+  auto *cut_hb_c = this->cut_hb_c;
+  auto *cut_hb_lo = this->cut_hb_lo;
+  auto *cut_hb_hi = this->cut_hb_hi;
+  auto *cut_hb_lc = this->cut_hb_lc;
+  auto *cut_hb_hc = this->cut_hb_hc;
+  auto *b_hb_lo = this->b_hb_lo;
+  auto *b_hb_hi = this->b_hb_hi;
+  auto *shift_hb = this->shift_hb;
+
+  auto *a_hb1 = this->a_hb1;
+  auto *theta_hb1_0 = this->theta_hb1_0;
+  auto *dtheta_hb1_ast = this->dtheta_hb1_ast;
+  auto *b_hb1 = this->b_hb1;
+  auto *dtheta_hb1_c = this->dtheta_hb1_c;
+
+  auto *a_hb2 = this->a_hb2;
+  auto *theta_hb2_0 = this->theta_hb2_0;
+  auto *dtheta_hb2_ast = this->dtheta_hb2_ast;
+  auto *b_hb2 = this->b_hb2;
+  auto *dtheta_hb2_c = this->dtheta_hb2_c;
+
+  auto *a_hb3 = this->a_hb3;
+  auto *theta_hb3_0 = this->theta_hb3_0;
+  auto *dtheta_hb3_ast = this->dtheta_hb3_ast;
+  auto *b_hb3 = this->b_hb3;
+  auto *dtheta_hb3_c = this->dtheta_hb3_c;
+
+  auto *a_hb4 = this->a_hb4;
+  auto *theta_hb4_0 = this->theta_hb4_0;
+  auto *dtheta_hb4_ast = this->dtheta_hb4_ast;
+  auto *b_hb4 = this->b_hb4;
+  auto *dtheta_hb4_c = this->dtheta_hb4_c;
+
+  auto *a_hb7 = this->a_hb7;
+  auto *theta_hb7_0 = this->theta_hb7_0;
+  auto *dtheta_hb7_ast = this->dtheta_hb7_ast;
+  auto *b_hb7 = this->b_hb7;
+  auto *dtheta_hb7_c = this->dtheta_hb7_c;
+
+  auto *a_hb8 = this->a_hb8;
+  auto *theta_hb8_0 = this->theta_hb8_0;
+  auto *dtheta_hb8_ast = this->dtheta_hb8_ast;
+  auto *b_hb8 = this->b_hb8;
+  auto *dtheta_hb8_c = this->dtheta_hb8_c;
+
+  // START OF VANILLA CODE DUPLICATION
 
   int ilo,ihi,jlo,jhi,imod4,jmod4;
   utils::bounds(FLERR,arg[0],1,atom->ntypes,ilo,ihi,error);
@@ -261,7 +292,7 @@ void PairOxdna3Hbond::coeff(int narg, char **arg)
       if (jmod4 == 0) jmod4 = 4;
 
       epsilon_hb[i][j] = epsilon_hb_one;
-      epsilon_hb[i][j] *= alpha_hb[imod4-1][jmod4-1];
+      epsilon_hb[i][j] *= this->alpha_hb[imod4-1][jmod4-1];
       a_hb[i][j] = a_hb_one;
       cut_hb_0[i][j] = cut_hb_0_one;
       cut_hb_c[i][j] = cut_hb_c_one;
@@ -272,7 +303,7 @@ void PairOxdna3Hbond::coeff(int narg, char **arg)
       b_hb_lo[i][j] = b_hb_lo_one;
       b_hb_hi[i][j] = b_hb_hi_one;
       shift_hb[i][j] = shift_hb_one;
-      shift_hb[i][j] *= alpha_hb[imod4-1][jmod4-1];
+      shift_hb[i][j] *= this->alpha_hb[imod4-1][jmod4-1];
 
       a_hb1[i][j] = a_hb1_one;
       theta_hb1_0[i][j] = theta_hb1_0_one;
@@ -326,5 +357,11 @@ void PairOxdna3Hbond::coeff(int narg, char **arg)
   }
 
   if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients in oxdna3/hbond" + utils::errorurl(21));
+}
 
+namespace LAMMPS_NS {
+template class PairOxdna3HbondKokkos<LMPDeviceType>;
+#ifdef LMP_KOKKOS_GPU
+template class PairOxdna3HbondKokkos<LMPHostType>;
+#endif
 }

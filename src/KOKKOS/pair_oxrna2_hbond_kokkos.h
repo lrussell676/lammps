@@ -34,12 +34,39 @@ class PairOxrna2HbondKokkos : public PairOxdnaHbondKokkos<DeviceType> {
   ~PairOxrna2HbondKokkos() {}
 };
 
+/* ----------------------------------------------------------------------
+   IMPORTANT NOTE ! We entirely code duplicate the sequence-specific alpha_hb
+   setup between PairOxrna2HbondKokkos and PairOxrna2Hbond. So any edits made
+   in one need to manually be made to the other !
+   The vanilla version is in: src/CG-DNA/pair_oxrna2_hbond.cpp
+------------------------------------------------------------------------- */
+
 template<class DeviceType>
 PairOxrna2HbondKokkos<DeviceType>::PairOxrna2HbondKokkos(LAMMPS *lmp) :
   PairOxdnaHbondKokkos<DeviceType>(lmp)
 {
-  // oxRNA2 uses its own sequence-dependent alpha_hb table.
-  this->init_alpha_hb_oxrna2();
+  // sequence-specific base-pairing strength
+  // A:0 C:1 G:2 U:3, 5'- [i][j] -3'
+
+  this->alpha_hb[0][0] = 1.00000;
+  this->alpha_hb[0][1] = 1.00000;
+  this->alpha_hb[0][2] = 1.00000;
+  this->alpha_hb[0][3] = 0.94253;
+
+  this->alpha_hb[1][0] = 1.00000;
+  this->alpha_hb[1][1] = 1.00000;
+  this->alpha_hb[1][2] = 1.22288;
+  this->alpha_hb[1][3] = 1.00000;
+
+  this->alpha_hb[2][0] = 1.00000;
+  this->alpha_hb[2][1] = 1.22288;
+  this->alpha_hb[2][2] = 1.00000;
+  this->alpha_hb[2][3] = 0.58655;
+
+  this->alpha_hb[3][0] = 0.94253;
+  this->alpha_hb[3][1] = 1.00000;
+  this->alpha_hb[3][2] = 0.58655;
+  this->alpha_hb[3][3] = 1.00000;
 }
 
 }    // namespace LAMMPS_NS
