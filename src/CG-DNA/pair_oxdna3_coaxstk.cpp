@@ -19,9 +19,14 @@
 
 using namespace LAMMPS_NS;
 
-/* ---------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------
+   IMPORTANT NOTE ! We entirely code duplicate the sequence-specific eta_cxst
+   setup between PairOxdna3Coaxstk and PairOxdna3CoaxstkKokkos. So any edits
+   made in one need to manually be made to the other !
+   The KOKKOS version is in: src/KOKKOS/pair_oxdna3_coaxstk_kokkos.h
+------------------------------------------------------------------------- */
 
-void PairOxdna2Coaxstk::init_eta_cxst_oxdna3()
+PairOxdna3Coaxstk::PairOxdna3Coaxstk(LAMMPS *lmp) : PairOxdna2Coaxstk(lmp)
 {
   // sequence-specific coaxial stacking strength
   // A:0 C:1 G:2 T:3, 3'- [i] X [j] -5'
@@ -45,36 +50,8 @@ void PairOxdna2Coaxstk::init_eta_cxst_oxdna3()
   eta_cxst[1][3] = 0.7694592613578328;
   eta_cxst[2][3] = 1.0007533199170144;
   eta_cxst[3][3] = 0.8593983791552220;
-}
-
-/* ---------------------------------------------------------------------- */
-
-PairOxdna3Coaxstk::PairOxdna3Coaxstk(LAMMPS *lmp) : PairOxdna2Coaxstk(lmp)
-{
-  // Use a shared helper so vanilla and KOKKOS oxdna3/coaxstk paths initialise
-  // identical sequence-dependent eta parameters.
-  init_eta_cxst_oxdna3();
 
   single_enable = 0;
   writedata = 0;
   trim_flag = 0;
 }
-
-/* ----------------------------------------------------------------------
-    set coeffs - introduces new function to handle KOKKOS compatibility.
-    Vanilla oxdna3 "coeff" literally just calls this "coeff_oxdna3_common"
-    function. The structure here avoids messy inheritance issues in KOKKOS
-    by not calling "PairOxdna3Coaxstk::coeff" directly. We can also avoid
-    code duplication of coeff within KOKKOS using this approach.
-
-   "coeff_oxdna3_common" is implemented as a base-class member of
-   PairOxdna2Coaxstk, which means it can be called from both the vanilla and
-   KOKKOS versions.
-------------------------------------------------------------------------- */
-
-void PairOxdna2Coaxstk::coeff_oxdna3_common(int narg, char **arg)
-{
-   PairOxdna2Coaxstk::coeff(narg, arg);
-}
-
-void PairOxdna3Coaxstk::coeff(int narg, char **arg) { coeff_oxdna3_common(narg, arg); }
