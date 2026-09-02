@@ -23,7 +23,6 @@ PairStyle(oxdna3/hbond/kk/host,PairOxdna3HbondKokkos<LMPHostType>);
 #define LMP_PAIR_OXDNA3_HBOND_KOKKOS_H
 
 #include "pair_oxdna_hbond_kokkos.h"
-#include "pair_oxdna3_hbond.h"
 
 namespace LAMMPS_NS {
 

@@ -24,7 +24,6 @@
 #include "math_special.h"
 
 #include <cmath>
-#include <cstring>
 #include <cassert>
 
 using namespace LAMMPS_NS;

@@ -25,7 +25,6 @@ PairStyle(oxrna2/stk/kk/host,PairOxrna2StkKokkos<LMPHostType>);
 #include "kokkos_base.h"
 #include "pair_kokkos.h"
 #include "pair_oxrna2_stk.h"
-#include "neigh_list_kokkos.h"
 
 namespace LAMMPS_NS {
 
