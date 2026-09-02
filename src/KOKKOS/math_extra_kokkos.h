@@ -71,7 +71,8 @@ namespace MathExtraKokkos {
 
   // quaternion operations
   // NOTE: we have float & double versions for some of these since quat in bonus struct is still double (i,e, - not just KK_FLOAT)
-  KOKKOS_INLINE_FUNCTION void richardson(KK_FLOAT *q, KK_FLOAT *m, KK_FLOAT *w, KK_FLOAT *moments, KK_FLOAT dtq);
+  KOKKOS_INLINE_FUNCTION void richardson(double *q, KK_FLOAT *m, KK_FLOAT *w, KK_FLOAT *moments, KK_FLOAT dtq);
+  KOKKOS_INLINE_FUNCTION void richardson(float *q, KK_FLOAT *m, KK_FLOAT *w, KK_FLOAT *moments, KK_FLOAT dtq);
 
   KOKKOS_INLINE_FUNCTION void qnormalize(double *q);
   KOKKOS_INLINE_FUNCTION void qnormalize(float *q);
@@ -475,8 +476,56 @@ void MathExtraKokkos::scalar_times3(const KK_FLOAT f, KK_FLOAT m[3][3])
    return new normalized quaternion q
    also returns updated omega at 1/2 step
 ------------------------------------------------------------------------- */
+
 KOKKOS_INLINE_FUNCTION
-void MathExtraKokkos::richardson(KK_FLOAT *q, KK_FLOAT *m, KK_FLOAT *w, KK_FLOAT *moments, KK_FLOAT dtq)
+void MathExtraKokkos::richardson(double *q, KK_FLOAT *m, KK_FLOAT *w, KK_FLOAT *moments, KK_FLOAT dtq)
+{
+  // full update from dq/dt = 1/2 w q
+
+  KK_FLOAT wq[4];
+  MathExtraKokkos::vecquat(w,q,wq);
+
+  double qfull[4];
+  qfull[0] = q[0] + static_cast<double>(dtq * wq[0]);
+  qfull[1] = q[1] + static_cast<double>(dtq * wq[1]);
+  qfull[2] = q[2] + static_cast<double>(dtq * wq[2]);
+  qfull[3] = q[3] + static_cast<double>(dtq * wq[3]);
+  MathExtraKokkos::qnormalize(qfull);
+
+  // 1st half update from dq/dt = 1/2 w q
+
+  double qhalf[4];
+  qhalf[0] = q[0] + static_cast<double>(static_cast<KK_FLOAT>(0.5)*dtq * wq[0]);
+  qhalf[1] = q[1] + static_cast<double>(static_cast<KK_FLOAT>(0.5)*dtq * wq[1]);
+  qhalf[2] = q[2] + static_cast<double>(static_cast<KK_FLOAT>(0.5)*dtq * wq[2]);
+  qhalf[3] = q[3] + static_cast<double>(static_cast<KK_FLOAT>(0.5)*dtq * wq[3]);
+  MathExtraKokkos::qnormalize(qhalf);
+
+  // re-compute omega at 1/2 step from m at 1/2 step and q at 1/2 step
+  // recompute wq
+
+  MathExtraKokkos::mq_to_omega(m,qhalf,moments,w);
+  MathExtraKokkos::vecquat(w,qhalf,wq);
+
+  // 2nd half update from dq/dt = 1/2 w q
+
+  qhalf[0] += static_cast<double>(static_cast<KK_FLOAT>(0.5)*dtq * wq[0]);
+  qhalf[1] += static_cast<double>(static_cast<KK_FLOAT>(0.5)*dtq * wq[1]);
+  qhalf[2] += static_cast<double>(static_cast<KK_FLOAT>(0.5)*dtq * wq[2]);
+  qhalf[3] += static_cast<double>(static_cast<KK_FLOAT>(0.5)*dtq * wq[3]);
+  MathExtraKokkos::qnormalize(qhalf);
+
+  // corrected Richardson update
+
+  q[0] = 2.0*qhalf[0] - qfull[0];
+  q[1] = 2.0*qhalf[1] - qfull[1];
+  q[2] = 2.0*qhalf[2] - qfull[2];
+  q[3] = 2.0*qhalf[3] - qfull[3];
+  MathExtraKokkos::qnormalize(q);
+}
+
+KOKKOS_INLINE_FUNCTION
+void MathExtraKokkos::richardson(float *q, KK_FLOAT *m, KK_FLOAT *w, KK_FLOAT *moments, KK_FLOAT dtq)
 {
   // full update from dq/dt = 1/2 w q
 
